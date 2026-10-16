@@ -37,10 +37,10 @@ function createRes() {
 describe("Aptitude questions security (#2375)", () => {
   it("requires authentication and applies both AI rate limiters", () => {
     expect(routeStack).toBeDefined();
-    expect(routeStack[0]).toBe(aiLimiter);
-    expect(routeStack[1]).toBe(protect);
+    expect(routeStack[0]).toBe(protect);
+    expect(routeStack[1]).toBe(aiLimiter);
     expect(routeStack[2]).toBe(aiUserLimiter);
-  });
+});
 
   it("rejects a missing topic without calling the AI helper", async () => {
     const handler = routeStack.at(-1);
@@ -67,7 +67,14 @@ describe("Aptitude questions security (#2375)", () => {
     });
   });
 
-  it.each(["<script>", "probability>", "topic\u0001test"])(
+  it.each([
+    "<script>",
+    "probability>",
+    "topic\u0001test",
+    "topic\u2028test",
+    "topic\u2029test",
+    "Probability!!!!!!!!!!",
+  ])(
     "rejects invalid topic characters in %j",
     async (topic) => {
       const handler = routeStack.at(-1);

@@ -15,7 +15,7 @@ const INITIAL_DELAY = 1000;
 
 
 // GET /api/questions?topic=Probability
-router.get("/", aiLimiter, protect, aiUserLimiter, async (req, res) => {
+router.get("/", protect, aiLimiter, aiUserLimiter, async (req, res) => {
   const { topic } = req.query;
 
   if (typeof topic !== "string" || topic.trim().length === 0) {
@@ -28,7 +28,10 @@ router.get("/", aiLimiter, protect, aiUserLimiter, async (req, res) => {
     return res.status(400).json({ error: "Topic must be 100 characters or fewer" });
   }
 
-  if (/[\u0000-\u001F\u007F<>]/.test(sanitizedTopic)) {
+  if (
+    /[\p{Cc}\p{Zl}\p{Zp}<>]/u.test(sanitizedTopic) ||
+    /[\p{P}\p{S}]{4,}/u.test(sanitizedTopic)
+  ) {
     return res.status(400).json({ error: "Topic contains invalid characters" });
   }
 
@@ -83,13 +86,17 @@ router.get("/", aiLimiter, protect, aiUserLimiter, async (req, res) => {
           error: "Failed to parse Gemini response",
         });
     }
-    if (!questionCache.has(cacheKey) && questionCache.keys().length >= 500) {
+    if (questionCache.has(cacheKey)) {
+      return res.json(questionCache.get(cacheKey));
+    }
+
+    if (questionCache.keys().length >= 500) {
       questionCache.del(questionCache.keys()[0]);
     }
 
     questionCache.set(cacheKey, questions);
 
-    res.json(questions);
+    return res.json(questions);
   } catch (error) {
     console.error("Gemini API error:", error);
     res
